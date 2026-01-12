@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+export const runtime = "edge";
 
 // 2. Data Fetcher
 async function getCategoryPosts(category: string, limit = 10) {
