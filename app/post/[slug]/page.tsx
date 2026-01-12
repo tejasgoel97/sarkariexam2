@@ -1,5 +1,4 @@
 // import dbConnect from "@/lib/mongodb";
-import { IPublishedPost } from "@/models/Post";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import Link from "next/link";
@@ -56,7 +55,7 @@ async function getRelatedPosts(
   currentPostId: string,
   category: string,
   tags: string[] = []
-): Promise<IPublishedPost[]> {
+): Promise<any[]> {
   const params = new URLSearchParams({
     currentPostId,
     category,

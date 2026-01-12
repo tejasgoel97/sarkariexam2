@@ -1,16 +1,14 @@
 // app/sitemap.ts
 import { MetadataRoute } from "next";
-import dbConnect from "@/lib/mongodb";
-import Post from "@/models/Post";
 
 export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
-  // 1. Define your Static Pages (Categories)
+  // Static routes
   const staticRoutes = [
-    "", // Homepage
+    "",
     "/result",
     "/admit-card",
     "/latest-jobs",
@@ -21,18 +19,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     url: `${baseUrl}${route}`,
     lastModified: new Date(),
     changeFrequency: "daily" as const,
-    priority: route === "" ? 1 : 0.8, // Homepage has highest priority
+    priority: route === "" ? 1 : 0.8,
   }));
 
-  // 2. Fetch Dynamic Posts from MongoDB
-  await dbConnect();
+  // Fetch dynamic routes from Lambda (NOT MongoDB)
+  const res = await fetch(`${process.env.API_BASE_URL}/api/sitemap-posts`, {
+    cache: "no-store",
+  });
 
-  // We fetch only the 'slug' and 'updatedAt' to keep it fast
-  const posts = await Post.find({})
-    .select("slug updatedAt")
-    .sort({ updatedAt: -1 })
-    .limit(5000) // Limit to prevent timeout on huge sites
-    .lean();
+  if (!res.ok) {
+    return staticRoutes;
+  }
+
+  const { posts } = await res.json();
 
   const dynamicRoutes = posts.map((post: any) => ({
     url: `${baseUrl}/post/${post.slug}`,
@@ -41,6 +40,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
-  // 3. Merge and Return
   return [...staticRoutes, ...dynamicRoutes];
 }
