@@ -1,3 +1,5 @@
+export const runtime = "edge"; // 1. REQUIRED for Cloudflare
+
 import Image from "next/image";
 import Link from "next/link";
 
@@ -11,6 +13,8 @@ async function searchPosts(query: string, options?: { revalidate?: number }) {
   const res = await fetch(
     `${process.env.API_BASE_URL}/api/search-posts?${params.toString()}`,
     {
+      // In Next.js 15, fetch is not cached by default, so "no-store" is redundant but safe.
+      // We keep the logic to allow ISR via the options param.
       ...(options?.revalidate
         ? { next: { revalidate: options.revalidate } }
         : { cache: "no-store" }),
@@ -29,11 +33,14 @@ async function searchPosts(query: string, options?: { revalidate?: number }) {
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: { q?: string };
+  // 2. TYPE CHANGE: searchParams is now a Promise
+  searchParams: Promise<{ q?: string }>;
 }) {
-  const query = searchParams.q || "";
+  // 3. BREAKING CHANGE FIX: You MUST await searchParams
+  const resolvedParams = await searchParams;
+  const query = resolvedParams.q || "";
+
   const posts = await searchPosts(query, { revalidate: 60 });
-  // Perform a case-insensitive regex search on Title or Tags
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">

@@ -1,10 +1,9 @@
+export const runtime = "edge"; // 1. REQUIRED for Cloudflare
+
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
-
-// 1. Force Dynamic: Category pages must be fresh
-// export const dynamic = "force-dynamic";
 
 // 2. Configuration: Colors and Titles
 const categoryConfig: Record<
@@ -72,9 +71,13 @@ const categoryConfig: Record<
 export async function generateMetadata({
   params,
 }: {
-  params: { category: string };
+  // FIX: params is now a Promise
+  params: Promise<{ category: string }>;
 }): Promise<Metadata> {
-  const config = categoryConfig[params.category];
+  // FIX: Await params before using them
+  const resolvedParams = await params;
+  const config = categoryConfig[resolvedParams.category];
+
   if (!config) return { title: "Category Not Found" };
 
   return {
@@ -87,33 +90,36 @@ export async function generateMetadata({
 export default async function CategoryPage({
   params,
 }: {
-  params: { category: string };
+  // FIX: params is now a Promise
+  params: Promise<{ category: string }>;
 }) {
-  // console.log("Category Page Params:", params);
-  // await dbConnect();
+  // FIX: Await params here too
+  const resolvedParams = await params;
+  const category = resolvedParams.category;
 
   // Validation
-  const config = categoryConfig[params.category];
+  const config = categoryConfig[category];
   if (!config) {
     notFound();
   }
-  console.log("URL", process.env.API_BASE_URL);
+
   // Fetch Data (Limit 50 for archive page)
   let posts: any[] = [];
-  console.log(
-    `${process.env.API_BASE_URL}/api/category-posts?category=${params.category}`
-  );
-  const res = await fetch(
-    `${process.env.API_BASE_URL}/api/category-posts?category=${params.category}`,
-    { cache: "no-store" }
-  );
-  console.log("Category Posts Response Status:", res.status);
-  console.log("response", await res.clone().text());
-  if (!res.ok) {
-    console.error("Failed to fetch category posts:", params.category);
 
-    // return notFound();
+  const res = await fetch(
+    `${process.env.API_BASE_URL}/api/category-posts?category=${category}`,
+    {
+      // OPTIONAL: Switch to ISR for better performance
+      // next: { revalidate: 60 }
+      cache: "no-store",
+    }
+  );
+
+  if (!res.ok) {
+    console.error("Failed to fetch category posts:", category);
+    // return notFound(); // Uncomment if you want strict 404s
   }
+
   const data = await res.json();
   posts = data.posts || [];
 
@@ -142,7 +148,7 @@ export default async function CategoryPage({
         </span>
       </nav>
 
-      {/* 2. Header Banner (Specific Color Theme) */}
+      {/* 2. Header Banner */}
       <div
         className={`p-6 rounded-xl border ${config.bg} ${config.border} mb-6 flex flex-col md:flex-row items-center justify-between shadow-sm`}
       >
@@ -157,7 +163,7 @@ export default async function CategoryPage({
           </p>
         </div>
 
-        {/* Quick Filter / Decorator */}
+        {/* Quick Filter */}
         <div className="mt-4 md:mt-0">
           <span
             className={`hidden md:inline-block px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-white ${config.color} shadow-sm border ${config.border}`}
@@ -167,7 +173,7 @@ export default async function CategoryPage({
         </div>
       </div>
 
-      {/* 3. "Join Group" Strip (High Conversion) */}
+      {/* 3. Join Group Strip */}
       <div className="bg-blue-900 text-white p-3 rounded-lg mb-8 flex items-center justify-between shadow-md">
         <div className="flex items-center gap-2 text-sm font-bold">
           <span className="animate-pulse text-yellow-300">🔔</span>
@@ -181,7 +187,7 @@ export default async function CategoryPage({
         </Link>
       </div>
 
-      {/* 4. The Content Grid */}
+      {/* 4. Content Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {posts.map((post: any) => (
           <Link
@@ -237,7 +243,6 @@ export default async function CategoryPage({
                   "Click to read full notification details, dates, and eligibility criteria."}
               </p>
 
-              {/* Footer Meta */}
               <div className="mt-auto pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
                 <span className="text-gray-400 font-medium">
                   📅 {new Date(post.updatedAt).toLocaleDateString("hi-IN")}
@@ -272,7 +277,7 @@ export default async function CategoryPage({
         </div>
       )}
 
-      {/* 6. Bottom SEO Text (Hidden on Mobile, Visible Desktop) */}
+      {/* 6. SEO Text */}
       <div className="mt-12 text-center text-xs text-gray-400 max-w-2xl mx-auto hidden md:block">
         <p>Sarkari Dekho - {config.label} - Archives</p>
         <p className="mt-2">

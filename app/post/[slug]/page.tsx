@@ -1,3 +1,5 @@
+export const runtime = "edge"; // 1. REQUIRED for Cloudflare
+
 // import dbConnect from "@/lib/mongodb";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
@@ -5,13 +7,17 @@ import Link from "next/link";
 import Image from "next/image";
 
 interface Props {
-  params: { slug: string };
+  // 2. TYPE CHANGE: params is now a Promise
+  params: Promise<{ slug: string }>;
 }
 
 // 1. DYNAMIC SEO METADATA
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  // 3. AWAIT PARAMS before using them
+  const resolvedParams = await params;
+
   const res = await fetch(
-    `${process.env.API_BASE_URL}/api/post-by-slug?slug=${params.slug}`,
+    `${process.env.API_BASE_URL}/api/post-by-slug?slug=${resolvedParams.slug}`,
     { cache: "no-store" }
   );
 
@@ -30,7 +36,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description: post.metaDescription,
     keywords: (post as any).tags || [],
     alternates: {
-      canonical: `${process.env.NEXT_PUBLIC_SITE_URL}/post/${params.slug}`,
+      canonical: `${process.env.NEXT_PUBLIC_SITE_URL}/post/${resolvedParams.slug}`,
     },
     openGraph: {
       title: post.title,
@@ -82,10 +88,14 @@ async function getRelatedPosts(
 
 // 3. MAIN PAGE COMPONENT
 export default async function PostPage({ params }: Props) {
-  console.log("Post Page Params:", params);
+  // 4. AWAIT PARAMS here too
+  const resolvedParams = await params;
+
+  // console.log("Post Page Params:", resolvedParams);
+
   // Fetch Post Data by Slug
   const res = await fetch(
-    `${process.env.API_BASE_URL}/api/post-by-slug?slug=${params.slug}`,
+    `${process.env.API_BASE_URL}/api/post-by-slug?slug=${resolvedParams.slug}`,
     { next: { revalidate: 60 } }
   );
   const { post } = await res.json();
@@ -97,6 +107,7 @@ export default async function PostPage({ params }: Props) {
     post.category,
     post.tags || []
   );
+
   // JSON-LD Structured Data (For Google Rich Snippets)
   const jsonLd = {
     "@context": "https://schema.org",
@@ -328,7 +339,7 @@ export default async function PostPage({ params }: Props) {
             </div>
           </div>
 
-          {/* Widget 3: Sticky Ad Placeholder (SEO Best Practice: Don't shift layout) */}
+          {/* Widget 3: Sticky Ad Placeholder */}
           <div className="sticky top-20">
             <div className="bg-gray-100 rounded-xl border border-gray-200 h-[300px] flex items-center justify-center text-gray-400 text-sm">
               Ad Space / Banner
