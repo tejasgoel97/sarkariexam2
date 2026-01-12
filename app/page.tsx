@@ -35,7 +35,7 @@ const SarkariColumn = ({
   link: string;
 }) => (
   <div className="border-2 border-blue-900 rounded-lg overflow-hidden flex flex-col h-full bg-white shadow-sm">
-    <div className="bg-blue-900 text-white font-bold text-center py-2 text-lg uppercase tracking-wide">
+    <div className="bg-blue-900 text-white font-bold text-center py-2 text-lg uppercase  tracking-wide">
       {title}
     </div>
     <div className="flex-grow p-0">
