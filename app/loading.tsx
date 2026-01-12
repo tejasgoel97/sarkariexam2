@@ -12,7 +12,7 @@ export default function Loading() {
             <div className="space-y-3">
               <div className="h-4 bg-gray-100 rounded w-3/4"></div>
               <div className="h-4 bg-gray-100 rounded w-full"></div>
-              <div className="h-4 bg-gray-100 rounded w-5/6"></div>
+              <div className="h-5 bg-gray-100 rounded w-5/6"></div>
             </div>
           </div>
         ))}
