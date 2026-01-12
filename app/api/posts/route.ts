@@ -3,7 +3,7 @@ import dbConnect from "@/lib/mongodb";
 import Post from "@/models/Post";
 import { revalidatePath } from "next/cache";
 
-// GET: Fetch all posts (Optional, for admin lists)
+// GET: Fetch all posts
 export async function GET(req: NextRequest) {
   await dbConnect();
   const url = new URL(req.url);

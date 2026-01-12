@@ -1,16 +1,24 @@
-import dbConnect from "@/lib/mongodb";
-import Post from "@/models/Post";
 import Link from "next/link";
 import Image from "next/image";
 
 // 2. Data Fetcher
 async function getCategoryPosts(category: string, limit = 10) {
-  await dbConnect();
-  return Post.find({ category })
-    .select("title slug category updatedAt featureImage") // fetching image now
-    .sort({ updatedAt: -1 })
-    .limit(limit)
-    .lean();
+  const params = new URLSearchParams({
+    category,
+    limit: String(limit),
+  });
+
+  const res = await fetch(
+    `${process.env.API_BASE_URL}/api/category-posts/home?${params.toString()}`,
+    { cache: "no-store" } // we’ll handle caching via Cloudflare
+  );
+
+  if (!res.ok) {
+    return [];
+  }
+
+  const { posts } = await res.json();
+  return posts ?? [];
 }
 
 // --- COMPONENTS ---
@@ -312,7 +320,7 @@ export default async function Home() {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {visualPosts.map((post) => (
-            <VisualCard key={post._id} post={post} />
+            <VisualCard key={post._id.toString()} post={post} />
           ))}
         </div>
       </div>
@@ -324,8 +332,8 @@ export default async function Home() {
             Answer Key
           </h3>
           <ul className="space-y-2">
-            {answerKeys.map((p) => (
-              <li key={p._id}>
+            {answerKeys.map((p: any) => (
+              <li key={p._id.toString()}>
                 <Link
                   href={`/post/${p.slug}`}
                   className="text-sm text-blue-700 hover:text-red-600 block truncate"
@@ -341,8 +349,8 @@ export default async function Home() {
             Syllabus
           </h3>
           <ul className="space-y-2">
-            {syllabus.map((p) => (
-              <li key={p._id}>
+            {syllabus.map((p: any) => (
+              <li key={p._id.toString()}>
                 <Link
                   href={`/post/${p.slug}`}
                   className="text-sm text-blue-700 hover:text-red-600 block truncate"
@@ -358,8 +366,8 @@ export default async function Home() {
             Admission
           </h3>
           <ul className="space-y-2">
-            {admission.map((p) => (
-              <li key={p._id}>
+            {admission.map((p: any) => (
+              <li key={p._id.toString()}>
                 <Link
                   href={`/post/${p.slug}`}
                   className="text-sm text-blue-700 hover:text-red-600 block truncate"

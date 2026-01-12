@@ -1,5 +1,5 @@
-import dbConnect from "@/lib/mongodb";
-import Post, { IPost } from "@/models/Post";
+// import dbConnect from "@/lib/mongodb";
+import { IPublishedPost } from "@/models/Post";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import Link from "next/link";
@@ -11,11 +11,20 @@ interface Props {
 
 // 1. DYNAMIC SEO METADATA
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  await dbConnect();
-  const post = (await Post.findOne({
-    slug: params.slug,
-  }).lean()) as IPost | null;
-  if (!post) return { title: "Not Found" };
+  const res = await fetch(
+    `${process.env.API_BASE_URL}/api/post-by-slug?slug=${params.slug}`,
+    { cache: "no-store" }
+  );
+
+  if (!res.ok) {
+    return { title: "Not Found" };
+  }
+
+  const { post } = await res.json();
+
+  if (!post) {
+    return { title: "Not Found" };
+  }
 
   return {
     title: `${post.title} - Sarkari Dekho`,
@@ -44,35 +53,48 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 // 2. FETCH RELATED POSTS (Smart Interlinking)
 async function getRelatedPosts(
-  currentPostId: any,
+  currentPostId: string,
   category: string,
   tags: string[] = []
-) {
-  await dbConnect();
+): Promise<IPublishedPost[]> {
+  const params = new URLSearchParams({
+    currentPostId,
+    category,
+  });
 
-  // Find posts that share the same Category OR have matching Tags
-  return Post.find({
-    _id: { $ne: currentPostId }, // Exclude current post
-    $or: [{ category: category }, { tags: { $in: tags } }],
-  })
-    .select("title slug featureImage category updatedAt")
-    .sort({ updatedAt: -1 })
-    .limit(6) // Show 6 related posts
-    .lean() as unknown as IPost[];
+  if (tags.length) {
+    params.set("tags", tags.join(","));
+  }
+
+  const res = await fetch(
+    `${process.env.API_BASE_URL}/api/related-posts?${params.toString()}`,
+    {
+      cache: "no-store", // or revalidate
+    }
+  );
+
+  if (!res.ok) {
+    return [];
+  }
+
+  const { posts } = await res.json();
+  return posts ?? [];
 }
 
 // 3. MAIN PAGE COMPONENT
 export default async function PostPage({ params }: Props) {
-  await dbConnect();
-  const post = (await Post.findOne({
-    slug: params.slug,
-  }).lean()) as IPost | null;
-
+  console.log("Post Page Params:", params);
+  // Fetch Post Data by Slug
+  const res = await fetch(
+    `${process.env.API_BASE_URL}/api/post-by-slug?slug=${params.slug}`,
+    { next: { revalidate: 60 } }
+  );
+  const { post } = await res.json();
   if (!post) notFound();
 
   // Fetch Related Posts based on the current post's data
   const relatedPosts = await getRelatedPosts(
-    post._id,
+    post._id.toString(),
     post.category,
     post.tags || []
   );

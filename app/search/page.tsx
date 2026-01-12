@@ -1,10 +1,30 @@
-import dbConnect from "@/lib/mongodb";
-import Post from "@/models/Post";
 import Image from "next/image";
 import Link from "next/link";
 
-// Force dynamic so it reads the search query on every request
-export const dynamic = "force-dynamic";
+async function searchPosts(query: string, options?: { revalidate?: number }) {
+  if (!query || query.trim().length < 2) {
+    return [];
+  }
+
+  const params = new URLSearchParams({ q: query });
+
+  const res = await fetch(
+    `${process.env.API_BASE_URL}/api/search-posts?${params.toString()}`,
+    {
+      ...(options?.revalidate
+        ? { next: { revalidate: options.revalidate } }
+        : { cache: "no-store" }),
+    }
+  );
+
+  if (!res.ok) {
+    console.error("Search fetch failed:", query);
+    return [];
+  }
+
+  const data = await res.json();
+  return data.posts ?? [];
+}
 
 export default async function SearchPage({
   searchParams,
@@ -12,21 +32,8 @@ export default async function SearchPage({
   searchParams: { q?: string };
 }) {
   const query = searchParams.q || "";
-  await dbConnect();
-
+  const posts = await searchPosts(query, { revalidate: 60 });
   // Perform a case-insensitive regex search on Title or Tags
-  const posts = query
-    ? await Post.find({
-        $or: [
-          { title: { $regex: query, $options: "i" } },
-          { tags: { $regex: query, $options: "i" } }, // Optional: Search tags too
-        ],
-      })
-        .select("title slug category updatedAt featureImage metaDescription")
-        .sort({ updatedAt: -1 })
-        .limit(20)
-        .lean()
-    : [];
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -55,6 +62,8 @@ export default async function SearchPage({
                   <Image
                     src={post.featureImage}
                     alt={post.title}
+                    fill
+                    unoptimized
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                   />
                 ) : (

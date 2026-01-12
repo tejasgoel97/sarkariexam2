@@ -1,17 +1,22 @@
-import dbConnect from "@/lib/mongodb";
-import Post from "@/models/Post";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 
 // 1. Force Dynamic: Category pages must be fresh
-export const dynamic = "force-dynamic";
+// export const dynamic = "force-dynamic";
 
 // 2. Configuration: Colors and Titles
 const categoryConfig: Record<
   string,
-  { color: string; bg: string; border: string; icon: string; label: string; seoTitle: string }
+  {
+    color: string;
+    bg: string;
+    border: string;
+    icon: string;
+    label: string;
+    seoTitle: string;
+  }
 > = {
   result: {
     color: "text-pink-700",
@@ -64,7 +69,11 @@ const categoryConfig: Record<
 };
 
 // 3. Dynamic Metadata Generator (Crucial for SEO)
-export async function generateMetadata({ params }: { params: { category: string } }): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: { category: string };
+}): Promise<Metadata> {
   const config = categoryConfig[params.category];
   if (!config) return { title: "Category Not Found" };
 
@@ -80,33 +89,51 @@ export default async function CategoryPage({
 }: {
   params: { category: string };
 }) {
-  await dbConnect();
+  // console.log("Category Page Params:", params);
+  // await dbConnect();
 
   // Validation
   const config = categoryConfig[params.category];
   if (!config) {
     notFound();
   }
-
+  console.log("URL", process.env.API_BASE_URL);
   // Fetch Data (Limit 50 for archive page)
-  const posts = await Post.find({ category: params.category })
-    .select("title slug featureImage metaDescription updatedAt category")
-    .sort({ updatedAt: -1 })
-    .limit(50)
-    .lean();
+  let posts: any[] = [];
+  console.log(
+    `${process.env.API_BASE_URL}/api/category-posts?category=${params.category}`
+  );
+  const res = await fetch(
+    `${process.env.API_BASE_URL}/api/category-posts?category=${params.category}`,
+    { cache: "no-store" }
+  );
+  console.log("Category Posts Response Status:", res.status);
+  console.log("response", await res.clone().text());
+  if (!res.ok) {
+    console.error("Failed to fetch category posts:", params.category);
+
+    // return notFound();
+  }
+  const data = await res.json();
+  posts = data.posts || [];
 
   // Helper: New Badge Logic (7 Days)
   const isNew = (date: Date) => {
-    const diffDays = Math.ceil(Math.abs(new Date().getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24));
+    const diffDays = Math.ceil(
+      Math.abs(new Date().getTime() - new Date(date).getTime()) /
+        (1000 * 60 * 60 * 24)
+    );
     return diffDays <= 7;
   };
 
   return (
     <div className="max-w-7xl mx-auto px-3 md:px-4 py-8 font-sans bg-gray-50 min-h-screen">
-      
       {/* 1. Breadcrumb */}
       <nav className="text-sm text-gray-500 mb-4 flex items-center gap-2">
-        <Link href="/" className="hover:text-blue-600 transition underline decoration-gray-300 underline-offset-4">
+        <Link
+          href="/"
+          className="hover:text-blue-600 transition underline decoration-gray-300 underline-offset-4"
+        >
           Home
         </Link>
         <span className="text-gray-400">/</span>
@@ -116,32 +143,41 @@ export default async function CategoryPage({
       </nav>
 
       {/* 2. Header Banner (Specific Color Theme) */}
-      <div className={`p-6 rounded-xl border ${config.bg} ${config.border} mb-6 flex flex-col md:flex-row items-center justify-between shadow-sm`}>
+      <div
+        className={`p-6 rounded-xl border ${config.bg} ${config.border} mb-6 flex flex-col md:flex-row items-center justify-between shadow-sm`}
+      >
         <div className="text-center md:text-left">
-          <h1 className={`text-3xl md:text-4xl font-black ${config.color} flex items-center justify-center md:justify-start gap-3 uppercase tracking-tight`}>
+          <h1
+            className={`text-3xl md:text-4xl font-black ${config.color} flex items-center justify-center md:justify-start gap-3 uppercase tracking-tight`}
+          >
             <span>{config.icon}</span> {config.label}
           </h1>
           <p className="text-gray-600 mt-2 text-sm font-medium">
             Showing latest {posts.length} updates for {config.label} in India.
           </p>
         </div>
-        
+
         {/* Quick Filter / Decorator */}
         <div className="mt-4 md:mt-0">
-           <span className={`hidden md:inline-block px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-white ${config.color} shadow-sm border ${config.border}`}>
-             Live Updates
-           </span>
+          <span
+            className={`hidden md:inline-block px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-white ${config.color} shadow-sm border ${config.border}`}
+          >
+            Live Updates
+          </span>
         </div>
       </div>
 
       {/* 3. "Join Group" Strip (High Conversion) */}
       <div className="bg-blue-900 text-white p-3 rounded-lg mb-8 flex items-center justify-between shadow-md">
         <div className="flex items-center gap-2 text-sm font-bold">
-           <span className="animate-pulse text-yellow-300">🔔</span>
-           <span>Get {config.label} on WhatsApp</span>
+          <span className="animate-pulse text-yellow-300">🔔</span>
+          <span>Get {config.label} on WhatsApp</span>
         </div>
-        <Link href="#" className="bg-yellow-400 text-blue-900 text-xs font-black px-4 py-2 rounded uppercase hover:bg-white transition">
-           Join Now
+        <Link
+          href="#"
+          className="bg-yellow-400 text-blue-900 text-xs font-black px-4 py-2 rounded uppercase hover:bg-white transition"
+        >
+          Join Now
         </Link>
       </div>
 
@@ -164,16 +200,25 @@ export default async function CategoryPage({
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
               ) : (
-                <div className={`w-full h-full flex flex-col items-center justify-center ${config.bg}`}>
-                  <span className="text-5xl opacity-40 grayscale">{config.icon}</span>
+                <div
+                  className={`w-full h-full flex flex-col items-center justify-center ${config.bg}`}
+                >
+                  <span className="text-5xl opacity-40 grayscale">
+                    {config.icon}
+                  </span>
                 </div>
               )}
 
               {/* Badges */}
-              <span className={`absolute top-0 left-0 text-white text-[10px] font-bold px-3 py-1 rounded-br-lg shadow-sm uppercase ${config.color.replace('text', 'bg')}`}>
+              <span
+                className={`absolute top-0 left-0 text-white text-[10px] font-bold px-3 py-1 rounded-br-lg shadow-sm uppercase ${config.color.replace(
+                  "text",
+                  "bg"
+                )}`}
+              >
                 {config.label}
               </span>
-              
+
               {isNew(post.updatedAt) && (
                 <span className="absolute top-2 right-2 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow animate-pulse">
                   NEW
@@ -188,17 +233,20 @@ export default async function CategoryPage({
               </h2>
 
               <p className="text-xs text-gray-500 line-clamp-2 mb-4">
-                {post.metaDescription || "Click to read full notification details, dates, and eligibility criteria."}
+                {post.metaDescription ||
+                  "Click to read full notification details, dates, and eligibility criteria."}
               </p>
 
               {/* Footer Meta */}
               <div className="mt-auto pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
-                 <span className="text-gray-400 font-medium">
-                   📅 {new Date(post.updatedAt).toLocaleDateString("hi-IN")}
-                 </span>
-                 <span className={`font-bold ${config.color} group-hover:underline`}>
-                   View Details &rarr;
-                 </span>
+                <span className="text-gray-400 font-medium">
+                  📅 {new Date(post.updatedAt).toLocaleDateString("hi-IN")}
+                </span>
+                <span
+                  className={`font-bold ${config.color} group-hover:underline`}
+                >
+                  View Details &rarr;
+                </span>
               </div>
             </div>
           </Link>
@@ -208,24 +256,30 @@ export default async function CategoryPage({
       {/* 5. Empty State */}
       {posts.length === 0 && (
         <div className="text-center py-20 bg-white rounded-xl border-2 border-dashed border-gray-300">
-          <div className="text-6xl mb-4 grayscale opacity-30">{config.icon}</div>
+          <div className="text-6xl mb-4 grayscale opacity-30">
+            {config.icon}
+          </div>
           <h3 className="text-xl font-bold text-gray-800">No Updates Yet</h3>
-          <p className="text-gray-500 mb-6">We are working on adding new {config.label.toLowerCase()}.</p>
-          <Link href="/" className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700">
+          <p className="text-gray-500 mb-6">
+            We are working on adding new {config.label.toLowerCase()}.
+          </p>
+          <Link
+            href="/"
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700"
+          >
             Go to Homepage
           </Link>
         </div>
       )}
-      
+
       {/* 6. Bottom SEO Text (Hidden on Mobile, Visible Desktop) */}
       <div className="mt-12 text-center text-xs text-gray-400 max-w-2xl mx-auto hidden md:block">
-        <p>Sarkari Dekho > {config.label} > Archives</p>
+        <p>Sarkari Dekho - {config.label} - Archives</p>
         <p className="mt-2">
-           Browse all historical and active updates for {config.seoTitle}. 
-           Data is sourced from official government websites.
+          Browse all historical and active updates for {config.seoTitle}. Data
+          is sourced from official government websites.
         </p>
       </div>
-
     </div>
   );
 }
